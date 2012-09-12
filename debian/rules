@@ -1,0 +1,69 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+export DESTDIR=$(CURDIR)/debian/tmp
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	touch $@
+
+build-arch: build
+build-indep: build
+
+build: build-stamp
+build-stamp: configure-stamp  
+	dh_testdir
+
+	touch $@
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+
+	mkdir -p $(DESTDIR)/usr/bin
+	install -m 755 obsync $(DESTDIR)/usr/bin/obsync
+	mkdir -p $(DESTDIR)/usr/share/man/man1
+	install -m 644 obsync.1 $(DESTDIR)/usr/share/man/man1
+
+# Add here commands to install the package into debian/testpack.
+# Build architecture-independent files here.
+binary-indep: build install
+
+# We have nothing to do by default.
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
+#	dh_installdocs --all ChangeLog
+#	dh_installexamples
+	dh_install --sourcedir=$(DESTDIR) --list-missing
+#	dh_installlogrotate
+#	dh_installinit --no-start
+	dh_installman
+	dh_lintian
+	dh_link
+
+	dh_compress
+	dh_fixperms
+#	dh_makeshlibs -X/usr/lib/rados-classes # exclude .so files in ceph package
+	dh_python2
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure
+
