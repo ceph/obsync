@@ -489,11 +489,21 @@ class Object(object):
         self.md5 = md5
         self.size = int(size)
         self.meta = meta
+
+    def should_check_etags(self, rhs):
+        if opts.check_etags == "never":
+            return False
+        if opts.check_etags == "relaxed":
+            vvprint("ETAGS: --check-etags={0}, self.md5 = {1}, rhs.md5 = {2}"
+                .format(opts.check_etags, self.md5, rhs.md5))
+            return not ('-' in self.md5 or '-' in rhs.md5)
+        return True
+
     def equals(self, rhs):
         if (self.name != rhs.name):
             vvprint("EQUALS: self.name = %s, rhs.name = %s" % (self.name, rhs.name))
             return False
-        if (self.md5 != rhs.md5):
+        if (self.should_check_etags(rhs) and self.md5 != rhs.md5):
             vvprint("EQUALS: self.md5 = %s, rhs.md5 = %s" % (self.md5, rhs.md5))
             return False
         if (self.size != rhs.size):
@@ -1034,6 +1044,13 @@ try:
     parser.add_option("-d", "--delete-after", action="store_true", \
         dest="delete_after", help="delete objects that aren't in SOURCE from \
     DESTINATION after doing all transfers.")
+    parser.add_option(
+        "--check-etags", default="always",
+        choices=["always", "relaxed", "never"],
+        help=("set whether equality checking relies on source and destination "
+              "etags being the same.  Values are 'always' (the default), "
+              "'relaxed' (skips etags when one or both contains a hyphen due "
+              "to multipart upload), and 'never'."))
     parser.add_option("-L", "--follow-symlinks", action="store_true", \
         dest="follow_symlinks", help="follow symlinks (please avoid symlink " + \
         "loops when using this option!)")
@@ -1131,6 +1148,9 @@ try:
     if (opts.delete_before and opts.delete_after):
         raise ObsyncArgumentParsingException("It doesn't make sense to \
 specify both --delete-before and --delete-after.")
+    if opts.check_etags == "never":
+        vvprint("--check-etags=never, skipping etag verification for object "
+                "equality!")
 
     currently_handling = "source"
     if (opts.more_verbose):
